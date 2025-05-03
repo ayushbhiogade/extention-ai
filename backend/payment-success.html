@@ -1,31 +1,161 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Payment Success - AI Webpage Q&A</title>
+    <title>Payment Successful - Page Bud AI</title>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
+        :root {
+            /* Main Colors */
+            --primary-color: #7c3aed;   /* Vibrant purple */
+            --primary-hover: #6d28d9;   /* Darker purple for hover states */
+            --primary-light: rgba(124, 58, 237, 0.1); /* Light purple for subtle highlights */
+            
+            /* Accent Colors */
+            --success-color: #10b981;   /* Green */
+            --error-color: #ef4444;     /* Red */
+            --warning-color: #f59e0b;   /* Amber */
+            
+            /* Dark Theme Colors */
+            --bg-dark: #1a1a24;         /* Main dark background */
+            --bg-darker: #111118;       /* Darker areas */
+            --bg-card: #24242f;         /* Card/content background */
+            --bg-input: #2d2d3a;        /* Input field background */
+            --bg-hover: #32323e;        /* Hover state background */
+            
+            /* Text Colors */
+            --text-primary: #ffffff;    /* Primary text on dark background */
+            --text-secondary: #a3a3c2;  /* Secondary/muted text */
+            --text-tertiary: #6b6b8f;   /* Very muted text */
+            
+            /* Border Colors */
+            --border-color: #32323e;    /* Subtle borders */
+            --border-hover: #42425a;    /* Hover state borders */
+            
+            /* Effects */
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+            
+            /* Gradient */
+            --gradient-primary: linear-gradient(145deg, #7c3aed, #c026d3);
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
+            font-family: 'Inter', sans-serif;
+            max-width: 400px;
             margin: 0 auto;
             padding: 20px;
             text-align: center;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.5;
         }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .header-icon {
+            width: 32px;
+            height: 32px;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
         .success-card {
-            background-color: #e8f5e9;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             padding: 30px;
-            border-radius: 8px;
             margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
         }
-        h1 { color: #2e7d32; }
-        p { margin: 20px 0; }
+        
+        .success-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--success-color);
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            color: var(--success-color);
+            margin-bottom: 20px;
+            animation: success-pulse 2s infinite;
+        }
+        
+        @keyframes success-pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .success-title {
+            color: var(--success-color);
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        
+        p { 
+            margin: 16px 0;
+            color: var(--text-secondary);
+        }
+        
+        .close-btn {
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .close-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
     </style>
 </head>
 <body>
+    <div class="header">
+        <img src="/extension-assets/extensionicon.png" alt="Logo" class="header-icon">
+        <h1>Page Bud AI</h1>
+    </div>
+    
     <div class="success-card">
-        <h1>Payment Successful!</h1>
-        <p>Your account has been upgraded to Pro. You now have unlimited access.</p>
-        <p>You can close this window and continue using the extension.</p>
+        <span class="material-icons-round success-icon">check_circle</span>
+        <h1 class="success-title">Payment Successful!</h1>
+        <p>Your account has been upgraded to Pro.</p>
+        <p>You now have unlimited access to AI-powered webpage analysis.</p>
+        <button onclick="window.close()" class="close-btn">
+            <span class="material-icons-round">done</span>
+            Continue Using Extension
+        </button>
     </div>
     
     <script>

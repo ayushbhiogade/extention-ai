@@ -1,72 +1,228 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Webpage Q&A - Payment</title>
+    <title>Page Bud AI - Upgrade to Pro</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
+        :root {
+            /* Main Colors */
+            --primary-color: #7c3aed;   /* Vibrant purple */
+            --primary-hover: #6d28d9;   /* Darker purple for hover states */
+            --primary-light: rgba(124, 58, 237, 0.1); /* Light purple for subtle highlights */
+            
+            /* Accent Colors */
+            --success-color: #10b981;   /* Green */
+            --error-color: #ef4444;     /* Red */
+            --warning-color: #f59e0b;   /* Amber */
+            
+            /* Dark Theme Colors */
+            --bg-dark: #1a1a24;         /* Main dark background */
+            --bg-darker: #111118;       /* Darker areas */
+            --bg-card: #24242f;         /* Card/content background */
+            --bg-input: #2d2d3a;        /* Input field background */
+            --bg-hover: #32323e;        /* Hover state background */
+            
+            /* Text Colors */
+            --text-primary: #ffffff;    /* Primary text on dark background */
+            --text-secondary: #a3a3c2;  /* Secondary/muted text */
+            --text-tertiary: #6b6b8f;   /* Very muted text */
+            
+            /* Border Colors */
+            --border-color: #32323e;    /* Subtle borders */
+            --border-hover: #42425a;    /* Hover state borders */
+            
+            /* Effects */
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+            
+            /* Gradient */
+            --gradient-primary: linear-gradient(145deg, #7c3aed, #c026d3);
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
+            font-family: 'Inter', sans-serif;
+            max-width: 500px;
             margin: 0 auto;
             padding: 20px;
             text-align: center;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.5;
         }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .header-icon {
+            width: 32px;
+            height: 32px;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
         .card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             margin: 20px 0;
             padding: 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
         }
-        h1 { color: #333; }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+        }
+        
+        .title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+        
         .price { 
-            font-size: 2.5em; 
-            color: #4CAF50;
-            margin: 20px 0;
+            font-size: 2.5rem; 
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 24px 0;
         }
+        
+        .price small {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
         .features {
             text-align: left;
             margin: 30px auto;
-            max-width: 400px;
         }
+        
+        .features ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .features li::before {
+            content: '✓';
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        
         button {
-            background: #4CAF50;
+            background: var(--gradient-primary);
             color: white;
             border: none;
-            padding: 12px 30px;
-            font-size: 1.2em;
-            border-radius: 4px;
+            padding: 14px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 10px;
             cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 0 auto;
         }
+        
         button:hover {
-            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
+        
+        button .material-icons-round {
+            font-size: 1.2rem;
+        }
+        
         #status {
             margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
+            padding: 16px;
+            border-radius: 10px;
             display: none;
         }
-        .success { background: #e8f5e9; color: #2e7d32; }
-        .error { background: #ffebee; color: #c62828; }
+        
+        .success { 
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .error { 
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
     </style>
 </head>
 <body>
+    <div class="header">
+        <img src="/extension-assets/extensionicon.png" alt="Logo" class="header-icon">
+        <h1>Page Bud AI</h1>
+    </div>
+    
     <div class="card">
-        <h1>AI Webpage Q&A - Pro Subscription</h1>
-        <div class="price">₹499/month</div>
+        <div class="title">Upgrade to Pro</div>
+        <p class="subtitle">Get unlimited AI queries and premium features</p>
+        
+        <div class="price">₹499 <small>/month</small></div>
         
         <div class="features">
             <ul>
-                <li>Unlimited AI queries</li>
-                <li>Priority support</li>
-                <li>Access to future premium features</li>
+                <li>Unlimited AI queries for all webpages</li>
+                <li>Priority support and updates</li>
+                <li>Advanced content extraction</li>
+                <li>Access to all future premium features</li>
             </ul>
         </div>
         
-        <button id="payButton">Proceed to Payment</button>
+        <button id="payButton">
+            <span class="material-icons-round">credit_card</span>
+            Proceed to Payment
+        </button>
         <div id="status"></div>
     </div>
 
@@ -121,7 +277,7 @@
                         key: result.key,
                         amount: result.amount,
                         currency: result.currency,
-                        name: 'AI Webpage Q&A',
+                        name: 'Page Bud AI',
                         description: 'Pro Subscription',
                         order_id: result.order_id,
                         prefill: {
@@ -132,7 +288,7 @@
                             userId: userId
                         },
                         theme: {
-                            color: '#4CAF50'
+                            color: '#7c3aed'
                         },
                         handler: function(response) {
                             // Verify payment with backend

@@ -1,72 +1,239 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Payment Page</title>
+    <title>Page Bud AI - Upgrade to Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        :root {
+            /* Main Colors */
+            --primary-color: #7c3aed;   /* Vibrant purple */
+            --primary-hover: #6d28d9;   /* Darker purple for hover states */
+            --primary-light: rgba(124, 58, 237, 0.1); /* Light purple for subtle highlights */
+            
+            /* Accent Colors */
+            --success-color: #10b981;   /* Green */
+            --error-color: #ef4444;     /* Red */
+            --warning-color: #f59e0b;   /* Amber */
+            
+            /* Dark Theme Colors */
+            --bg-dark: #1a1a24;         /* Main dark background */
+            --bg-darker: #111118;       /* Darker areas */
+            --bg-card: #24242f;         /* Card/content background */
+            --bg-input: #2d2d3a;        /* Input field background */
+            --bg-hover: #32323e;        /* Hover state background */
+            
+            /* Text Colors */
+            --text-primary: #ffffff;    /* Primary text on dark background */
+            --text-secondary: #a3a3c2;  /* Secondary/muted text */
+            --text-tertiary: #6b6b8f;   /* Very muted text */
+            
+            /* Border Colors */
+            --border-color: #32323e;    /* Subtle borders */
+            --border-hover: #42425a;    /* Hover state borders */
+            
+            /* Effects */
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+            
+            /* Gradient */
+            --gradient-primary: linear-gradient(145deg, #7c3aed, #c026d3);
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
+            font-family: 'Inter', sans-serif;
+            max-width: 400px;
             margin: 0 auto;
             padding: 20px;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.5;
         }
+        
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+        }
+        
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
         .card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
         }
+        
+        .card::before {
+            content: '';
+            display: block;
+            height: 4px;
+            margin: -24px -24px 24px -24px;
+            background: var(--gradient-primary);
+            border-radius: 14px 14px 0 0;
+        }
+        
         .card-header {
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
             margin-bottom: 20px;
         }
-        .price {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4CAF50;
+        
+        .card-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            margin: 0 0 8px 0;
         }
+        
+        .price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: block;
+            margin: 20px 0;
+        }
+        
+        .price small {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+        
+        .features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+        
+        .features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .features li .material-icons-round {
+            color: var(--success-color);
+            font-size: 1.1rem;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px;
+            border-radius: 50%;
+        }
+        
         button {
-            background-color: #4CAF50;
+            background: var(--gradient-primary);
             color: white;
             border: none;
-            padding: 10px 16px;
-            border-radius: 4px;
+            border-radius: 10px;
+            padding: 14px 24px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
+            width: 100%;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
+        
         button:hover {
-            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
+        
+        button:disabled {
+            opacity: 0.7;
+            transform: none;
+            cursor: not-allowed;
+        }
+        
         .success-message {
             display: none;
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            padding: 16px;
-            border-radius: 4px;
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+            padding: 20px;
+            border-radius: 12px;
             margin: 20px 0;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .success-message h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 0;
         }
     </style>
 </head>
 <body>
-    <h1>AI Webpage Q&A - Payment</h1>
+    <header>
+        <img src="images/extensionicon.png" alt="Icon" class="header-icon">
+        <h1>Page Bud AI</h1>
+    </header>
     
     <div class="card">
         <div class="card-header">
-            <h2>Pro Subscription</h2>
+            <h2>Upgrade to Pro</h2>
+            <p>Get unlimited AI queries and premium features</p>
         </div>
-        <p>Unlock unlimited AI queries with our Pro subscription:</p>
-        <ul>
-            <li>Unlimited AI-powered webpage analysis</li>
-            <li>Priority support</li>
-            <li>Access to future premium features</li>
+        
+        <ul class="features">
+            <li>
+                <span class="material-icons-round">check_circle</span>
+                <span>Unlimited AI queries</span>
+            </li>
+            <li>
+                <span class="material-icons-round">check_circle</span>
+                <span>Priority support</span>
+            </li>
+            <li>
+                <span class="material-icons-round">check_circle</span>
+                <span>Advanced content extraction</span>
+            </li>
+            <li>
+                <span class="material-icons-round">check_circle</span>
+                <span>Future premium features</span>
+            </li>
         </ul>
-        <p class="price">₹499/month</p>
-        <button id="payButton">Make Test Payment</button>
+        
+        <p class="price">₹499 <small>/month</small></p>
+        
+        <button id="payButton">
+            <span class="material-icons-round">credit_card</span>
+            Make Test Payment
+        </button>
     </div>
     
     <div id="successMessage" class="success-message">
-        <h3>Payment Successful!</h3>
+        <h3>
+            <span class="material-icons-round">check_circle</span>
+            Payment Successful!
+        </h3>
         <p>Your account has been upgraded to Pro. You can now enjoy unlimited queries.</p>
         <p>You can close this window and continue using the extension.</p>
     </div>

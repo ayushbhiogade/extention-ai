@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AI Webpage Q&A",
+  "name": "Page Bud AI",
   "version": "0.1.0",
   "description": "Ask questions about the current webpage using AI.",
   "permissions": [
@@ -10,14 +10,15 @@
     "windows"
   ],
   "host_permissions": [
+    "https://ai-qa-extension-backend.onrender.com/*",
     "http://localhost:3000/*",
-    "https://your-deployed-backend.com/*",
     "https://checkout.razorpay.com/*"
   ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
   "content_security_policy": {
@@ -25,12 +26,14 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "images/icon16.png"
+    "default_icon": "images/extensionicon.png"
   },
   "background": {
     "service_worker": "background.js"
   },
   "icons": {
-      "16": "images/icon16.png"
+      "16": "images/extensionicon.png",
+      "48": "images/extensionicon.png",
+      "128": "images/extensionicon.png"
   }
 }

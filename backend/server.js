@@ -183,8 +183,38 @@ app.post('/api/razorpay-webhook', express.raw({type: 'application/json'}), async
     res.status(200).json({ received: true });
 });
 
-// Enable CORS - Adjust origin later for security
-app.use(cors({ origin: '*' })); // Allow all origins for now during development
+// Enable CORS - More secure configuration
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      'chrome-extension://*',  // Chrome extension
+      'http://localhost:3000', // Local development
+      'https://ai-qa-extension-backend.onrender.com' // Render deployment URL (update this)
+    ];
+    
+    // Check if origin is allowed
+    let isAllowed = false;
+    for (const pattern of allowedOrigins) {
+      if (pattern === '*' || pattern === origin || 
+          (pattern.endsWith('*') && origin.startsWith(pattern.slice(0, -1)))) {
+        isAllowed = true;
+        break;
+      }
+    }
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed for this origin'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true
+}));
 
 // Parse JSON request bodies (for other routes)
 app.use(express.json());

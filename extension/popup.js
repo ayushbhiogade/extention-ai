@@ -1,0 +1,208 @@
+// popup.js
+
+document.addEventListener('DOMContentLoaded', () => {
+    const queryForm = document.getElementById('queryForm');
+    const questionInput = document.getElementById('questionInput');
+    const responseArea = document.getElementById('responseArea');
+    const loader = document.getElementById('loader');
+    const errorArea = document.getElementById('errorArea');
+    const usageInfo = document.getElementById('usageInfo');
+    const upgradeSection = document.getElementById('upgradeSection');
+    const upgradeButton = document.getElementById('upgradeButton');
+
+    const backendUrl = 'http://localhost:3000'; // Adjust if your backend runs elsewhere
+
+    // Function to update UI elements (loading, errors, response)
+    function showLoading(isLoading) {
+        loader.style.display = isLoading ? 'block' : 'none';
+        if (isLoading) {
+            responseArea.textContent = ''; // Clear previous response
+            errorArea.textContent = '';    // Clear previous error
+            upgradeSection.style.display = 'none'; // Hide upgrade section during loading
+        }
+    }
+
+    function showError(message) {
+        errorArea.textContent = message;
+        responseArea.textContent = '';
+        upgradeSection.style.display = 'none';
+        showLoading(false);
+    }
+
+    function showResponse(text) {
+        responseArea.textContent = text;
+        errorArea.textContent = '';
+        showLoading(false);
+    }
+
+    function showUpgradePrompt() {
+        errorArea.textContent = 'You have reached your free usage limit.';
+        responseArea.textContent = '';
+        upgradeSection.style.display = 'block';
+        showLoading(false);
+    }
+
+    // --- Form Submission Logic ---
+    queryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const question = questionInput.value.trim();
+        if (!question) {
+            showError('Please enter a question.');
+            return;
+        }
+
+        showLoading(true);
+
+        try {
+            // 1. Get User ID from storage
+            const { userId } = await chrome.storage.local.get('userId');
+            if (!userId) {
+                throw new Error('User ID not found. Please reinstall the extension.');
+            }
+
+            // 2. Get active tab to message content script
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!activeTab || !activeTab.id) {
+                throw new Error('Could not get active tab.');
+            }
+
+            // 3. Request page content from content script
+            let pageContent = '';
+            try {
+                const response = await chrome.tabs.sendMessage(activeTab.id, { action: 'getPageContent' });
+                if (response && response.success) {
+                    pageContent = response.content;
+                    console.log('Received page content length:', pageContent.length);
+                } else {
+                    throw new Error(response?.error || 'Failed to get page content from content script.');
+                }
+            } catch (err) {
+                 // Catch errors like the content script not being injected yet
+                 console.error("Error messaging content script:", err);
+                 // Check if it's a common 'no receiver' error
+                 if (err.message?.includes('Could not establish connection') || err.message?.includes('Receiving end does not exist')) {
+                    showError('Error: Could not connect to the page. Try reloading the page and the extension.');
+                 } else {
+                    showError(`Error getting page content: ${err.message}`);
+                 }
+                 showLoading(false);
+                 return; // Stop processing
+            }
+
+
+            // 4. Call Backend API
+            const apiResponse = await fetch(`${backendUrl}/api/query`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question, pageContent, userId }),
+            });
+
+            const result = await apiResponse.json();
+
+            if (!apiResponse.ok) {
+                // Handle specific errors from backend
+                if (apiResponse.status === 403 && result.reason === 'limit_reached') {
+                    showUpgradePrompt();
+                    // Update local storage count potentially (though backend is source of truth)
+                    chrome.storage.local.set({ usageCount: 5 }); // Assume limit is 5
+                    updateUsageDisplay(); // Update display
+                } else {
+                    throw new Error(result.message || `HTTP error! status: ${apiResponse.status}`);
+                }
+            } else if (result.error) {
+                 // Handle errors indicated in the JSON body even with a 200 OK
+                 throw new Error(result.message || 'Backend returned an error.');
+            } else {
+                showResponse(result.answer);
+                // Increment usage count locally for immediate feedback (backend is source of truth)
+                const currentData = await chrome.storage.local.get(['usageCount', 'isSubscribed']);
+                if (!currentData.isSubscribed) {
+                    const newCount = (currentData.usageCount || 0) + 1;
+                    chrome.storage.local.set({ usageCount: newCount });
+                    updateUsageDisplay(newCount, currentData.isSubscribed);
+                }
+            }
+
+        } catch (error) {
+            console.error('Error during query process:', error);
+            showError(`An error occurred: ${error.message}`);
+        } finally {
+           // Ensure loading is always turned off unless handled by specific UI states like showUpgradePrompt
+            if (loader.style.display === 'block') {
+                 showLoading(false);
+            }
+        }
+    });
+
+    // --- Upgrade Button Logic ---
+    upgradeButton.addEventListener('click', async () => {
+        showLoading(true);
+        try {
+            const { userId } = await chrome.storage.local.get('userId');
+            if (!userId) {
+                throw new Error('User ID not found.');
+            }
+
+            const apiResponse = await fetch(`${backendUrl}/api/create-checkout-session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId }),
+            });
+
+            const result = await apiResponse.json();
+
+            if (!apiResponse.ok || result.error) {
+                throw new Error(result.message || `Failed to create checkout session. Status: ${apiResponse.status}`);
+            }
+
+            // Open the Stripe Checkout page in a new tab
+            chrome.tabs.create({ url: result.url });
+            showError('Redirecting to payment page...'); // Give user feedback
+
+        } catch (error) {
+            console.error('Error creating checkout session:', error);
+            showError(`Upgrade failed: ${error.message}`);
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    // --- Initial UI Update --- 
+    // Function to update usage display
+    async function updateUsageDisplay(count, subscribed) {
+        const limit = 5; // The free limit
+        if (typeof count !== 'number' || typeof subscribed !== 'boolean') {
+             // Fetch from storage if not provided
+             const data = await chrome.storage.local.get(['usageCount', 'isSubscribed']);
+             count = data.usageCount ?? 0;
+             subscribed = data.isSubscribed ?? false;
+        }
+       
+        if (subscribed) {
+            usageInfo.textContent = 'Plan: Pro (Unlimited)';
+            upgradeSection.style.display = 'none'; // Hide upgrade if subscribed
+        } else {
+            usageInfo.textContent = `Usage: ${count} / ${limit} free queries`;
+            if (count >= limit) {
+                 // Optionally show upgrade prompt immediately if loaded and over limit
+                 // showUpgradePrompt(); // Uncomment this if you want the prompt on load when over limit
+            }
+        }
+    }
+
+    // Update display when popup opens
+    updateUsageDisplay();
+
+     // Listen for storage changes (e.g., background script updates subscription status)
+     chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && (changes.usageCount || changes.isSubscribed)) {
+            console.log('Storage changed, updating usage display.');
+            updateUsageDisplay(); // Re-fetch from storage and update UI
+        }
+    });
+
+});

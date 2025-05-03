@@ -1,0 +1,72 @@
+body {
+    font-family: sans-serif;
+    width: 350px;
+    padding: 10px;
+}
+
+h1 {
+    font-size: 1.2em;
+    margin-top: 0;
+    text-align: center;
+}
+
+#queryForm {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+textarea {
+    margin-bottom: 5px;
+    padding: 5px;
+    font-size: 0.9em;
+    resize: vertical; /* Allow vertical resizing */
+}
+
+button {
+    padding: 8px;
+    cursor: pointer;
+}
+
+#responseArea {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    min-height: 50px;
+    white-space: pre-wrap; /* Preserve whitespace and wrap */
+    word-wrap: break-word; /* Break long words */
+}
+
+#loader {
+    text-align: center;
+    color: #555;
+}
+
+#errorArea {
+    margin-top: 10px;
+    color: red;
+    font-weight: bold;
+}
+
+#usageInfo {
+    margin-top: 10px;
+    font-size: 0.8em;
+    color: #666;
+    text-align: right;
+}
+
+#upgradeSection {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+}
+
+#upgradeButton {
+    margin-top: 5px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+}

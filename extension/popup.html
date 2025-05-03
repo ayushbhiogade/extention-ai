@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Webpage Q&A</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <h1>Ask the Page</h1>
+
+    <div id="responseArea">
+        <!-- Response will be displayed here -->
+        <div id="loader" style="display: none;">Loading...</div>
+    </div>
+
+    <div id="errorArea" style="color: red;">
+        <!-- Errors will be displayed here -->
+    </div>
+
+    <form id="queryForm">
+        <textarea id="questionInput" placeholder="Ask about this page..." rows="4"></textarea>
+        <button type="submit">Ask AI</button>
+    </form>
+
+    <div id="usageInfo">
+        <!-- Usage info will be displayed here -->
+    </div>
+
+    <div id="upgradeSection" style="display: none;">
+        <p>Free limit reached.</p>
+        <button id="upgradeButton">Upgrade to Pro</button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

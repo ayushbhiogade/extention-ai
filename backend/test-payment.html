@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Payment - AI Webpage Q&A</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .success-message {
+            display: none;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Webpage Q&A - Payment</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2>Pro Subscription</h2>
+        </div>
+        <p>Unlock unlimited AI queries with our Pro subscription:</p>
+        <ul>
+            <li>Unlimited AI-powered webpage analysis</li>
+            <li>Priority support</li>
+            <li>Access to future premium features</li>
+        </ul>
+        <p class="price">₹499/month</p>
+        <button id="payButton">Make Test Payment</button>
+    </div>
+    
+    <div id="successMessage" class="success-message">
+        <h3>Payment Successful!</h3>
+        <p>Your account has been upgraded to Pro. You can now enjoy unlimited queries.</p>
+        <p>You can close this window and continue using the extension.</p>
+    </div>
+
+    <script>
+        document.getElementById('payButton').addEventListener('click', async () => {
+            // Get the userId from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            
+            if (!userId) {
+                alert('Error: User ID not found');
+                return;
+            }
+            
+            // Simulate a successful payment
+            document.getElementById('payButton').textContent = 'Processing...';
+            document.getElementById('payButton').disabled = true;
+            
+            // Wait 1.5 seconds to simulate payment processing
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            try {
+                // Call our backend to mark user as subscribed
+                const response = await fetch('/api/simulate-payment-success', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show success message
+                    document.getElementById('successMessage').style.display = 'block';
+                    // Try to update the extension's storage
+                    try {
+                        if (window.opener && window.opener.postMessage) {
+                            window.opener.postMessage({ action: 'payment_success', userId }, '*');
+                        }
+                    } catch (e) {
+                        console.log('Unable to communicate with extension');
+                    }
+                } else {
+                    alert('Error: ' + (result.message || 'Failed to process payment'));
+                    document.getElementById('payButton').textContent = 'Try Again';
+                    document.getElementById('payButton').disabled = false;
+                }
+            } catch (error) {
+                console.error('Payment error:', error);
+                alert('Network error. Please try again.');
+                document.getElementById('payButton').textContent = 'Try Again';
+                document.getElementById('payButton').disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

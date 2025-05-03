@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Content Extraction Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { background: #f0f0f0; padding: 10px; }
+        .main-content { padding: 20px 0; }
+        .footer { background: #f0f0f0; padding: 10px; }
+        .navigation { padding: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Test Website Header</h1>
+        <div class="navigation">
+            <a href="#">Home</a> | <a href="#">About</a> | <a href="#">Contact</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h2>Main Article</h2>
+        <p>This is a test article that should be extracted by our content script. It contains important information that we want to capture.</p>
+        
+        <h3>Key Points</h3>
+        <ul>
+            <li>The content script should extract meaningful text</li>
+            <li>Navigation and footer content should ideally be filtered</li>
+            <li>Special characters should be handled properly: &amp; © ®</li>
+        </ul>
+
+        <h3>Technical Details</h3>
+        <p>The extension uses document.body.innerText to extract content. This method has both advantages and limitations:</p>
+        <ol>
+            <li>It captures all visible text</li>
+            <li>It maintains basic text formatting</li>
+            <li>It might include unwanted navigation/footer content</li>
+        </ol>
+    </div>
+
+    <div class="footer">
+        <p>Footer content that might not be relevant to the main content</p>
+        <p>© 2025 Test Website</p>
+    </div>
+</body>
+</html>

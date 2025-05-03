@@ -4,7 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const { Firestore } = require('@google-cloud/firestore'); // <-- Add Firestore require
 const { GoogleGenerativeAI } = require("@google/generative-ai"); // <-- Add Gemini AI require
-const stripe = require('stripe'); // <-- Add Stripe require
+const Razorpay = require('razorpay'); // <-- Add Razorpay require
+const crypto = require('crypto'); // <-- Add crypto for webhook signature verification
 
 // --- Firestore Initialization ---
 const db = new Firestore(); // Automatically uses GOOGLE_APPLICATION_CREDENTIALS from .env
@@ -22,17 +23,20 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"}); // Or your
 console.log('Gemini AI initialized.');
 // ------
 
-// --- Stripe Initialization ---
-if (!process.env.STRIPE_SECRET_KEY) {
-    console.error('FATAL ERROR: STRIPE_SECRET_KEY is not set in .env file.');
+// --- Razorpay Initialization ---
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    console.error('FATAL ERROR: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in .env file.');
     process.exit(1);
 }
-if (!process.env.STRIPE_PRICE_ID) {
-    console.error('FATAL ERROR: STRIPE_PRICE_ID is not set in .env file.');
+if (!process.env.RAZORPAY_PLAN_ID) {
+    console.error('FATAL ERROR: RAZORPAY_PLAN_ID is not set in .env file.');
     process.exit(1);
 }
-const stripeClient = stripe(process.env.STRIPE_SECRET_KEY);
-console.log('Stripe initialized.');
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+});
+console.log('Razorpay initialized.');
 // ------
 
 // --- Firestore Helper Functions ---
@@ -116,79 +120,66 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // --- Middleware ---
-// IMPORTANT: Stripe webhook endpoint needs raw body, so define it BEFORE express.json()
-app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// IMPORTANT: Razorpay webhook endpoint needs raw body, so define it BEFORE express.json()
+app.post('/api/razorpay-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const shasum = crypto.createHmac('sha256', webhookSecret);
+    shasum.update(JSON.stringify(req.body));
+    const digest = shasum.digest('hex');
 
-    if (!sig || !webhookSecret) {
-        console.error('Webhook error: Missing signature or secret.');
-        return res.status(400).send('Webhook Error: Missing signature or secret.');
+    if (digest !== req.headers['x-razorpay-signature']) {
+        console.error('Invalid webhook signature');
+        return res.status(400).json({ error: 'Invalid webhook signature' });
     }
 
-    let event;
+    const event = req.body;
 
     try {
-        event = stripeClient.webhooks.constructEvent(req.body, sig, webhookSecret);
-        // console.log('Stripe webhook event received:', event.type);
-    } catch (err) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    // Handle the event
-    try {
-        switch (event.type) {
-            case 'checkout.session.completed': {
-                const session = event.data.object;
-                const userId = session.client_reference_id;
-                // Retrieve subscription details to get end date if needed
-                // For simplicity, we assume immediate access upon completion
-                // A more robust approach might fetch the subscription object from Stripe
-                console.log(`Checkout session completed for user ${userId}`);
-                // Note: Stripe subscriptions might have a delay before becoming 'active'
-                // We'll assume active on completion for now, but check subscription status below.
-                // We might not get an end date directly here, depends on subscription setup
-                // Let's just mark as subscribed for now. The subscription events will handle status.
-                await updateUserSubscription(userId, true, null); // Mark as subscribed, null end date initially
+        switch (event.event) {
+            case 'subscription.authenticated': {
+                const subscription = event.payload.subscription.entity;
+                const userId = subscription.notes.userId; // We'll add this when creating subscription
+                if (!userId) {
+                    console.error('No userId found in subscription.');
+                    return res.status(400).json({ error: 'Missing userId in subscription' });
+                }
+                console.log(`Subscription authenticated for user ${userId}`);
+                await updateUserSubscription(userId, true, null);
                 break;
             }
-            case 'customer.subscription.updated': {
-                const subscription = event.data.object;
-                const userId = subscription.metadata.userId || subscription.client_reference_id; // Get userId if stored in metadata, fallback to client_ref
-                 if (!userId) {
-                    console.error('Webhook Error: Could not find userId in customer.subscription.updated event.');
-                    break; // Skip processing if no user ID
+            case 'subscription.charged': {
+                const subscription = event.payload.subscription.entity;
+                const userId = subscription.notes.userId;
+                if (!userId) {
+                    console.error('No userId found in subscription charge.');
+                    return res.status(400).json({ error: 'Missing userId in subscription' });
                 }
-                const status = subscription.status === 'active';
-                const endDate = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null;
-                console.log(`Subscription updated for user ${userId}: Status=${subscription.status}, EndDate=${endDate}`);
-                await updateUserSubscription(userId, status, endDate);
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1); // Add one month to current date
+                
+                console.log(`Subscription charged for user ${userId}, valid until ${endDate}`);
+                await updateUserSubscription(userId, true, endDate);
                 break;
             }
-            case 'customer.subscription.deleted': {
-                const subscription = event.data.object;
-                 const userId = subscription.metadata.userId || subscription.client_reference_id;
-                 if (!userId) {
-                    console.error('Webhook Error: Could not find userId in customer.subscription.deleted event.');
-                    break;
+            case 'subscription.cancelled': {
+                const subscription = event.payload.subscription.entity;
+                const userId = subscription.notes.userId;
+                if (!userId) {
+                    console.error('No userId found in subscription cancellation.');
+                    return res.status(400).json({ error: 'Missing userId in subscription' });
                 }
-                console.log(`Subscription deleted for user ${userId}`);
+                console.log(`Subscription cancelled for user ${userId}`);
                 await updateUserSubscription(userId, false, null);
                 break;
             }
-            // ... handle other event types as needed (e.g., payment_failed)
             default:
-                console.log(`Unhandled Stripe event type ${event.type}`);
+                console.log(`Unhandled Razorpay event: ${event.event}`);
         }
     } catch (handlerError) {
-        console.error(`Error handling webhook event ${event.id}:`, handlerError);
-        // Return 500, but Stripe might retry if it sees non-200
-        // Consider specific error handling or always returning 200 if the error is non-critical
+        console.error(`Error handling webhook event:`, handlerError);
         return res.status(500).json({ error: 'Webhook handler failed' });
     }
 
-    // Return a 200 response to acknowledge receipt of the event
     res.status(200).json({ received: true });
 });
 
@@ -197,6 +188,9 @@ app.use(cors({ origin: '*' })); // Allow all origins for now during development
 
 // Parse JSON request bodies (for other routes)
 app.use(express.json());
+
+// Serve static files (like test-payment.html)
+app.use(express.static(__dirname)); // Serve static files from the backend directory
 
 // --- Routes ---
 app.get('/', (req, res) => {
@@ -294,43 +288,122 @@ Answer:`;
     }
 });
 
-// POST /api/create-checkout-session
-app.post('/api/create-checkout-session', async (req, res) => {
+// POST /api/create-subscription (Original subscription creation endpoint)
+app.post('/api/create-subscription', async (req, res) => {
     const { userId } = req.body;
 
     if (!userId) {
         return res.status(400).json({ error: true, reason: 'bad_request', message: 'Missing required field: userId' });
     }
 
-    // Define URLs - replace with your actual frontend URLs once deployed or setup
-    // For local testing, you might point success back to the extension or a simple localhost page
-    const successUrl = process.env.STRIPE_SUCCESS_URL || 'http://localhost:8080/success.html'; // Placeholder
-    const cancelUrl = process.env.STRIPE_CANCEL_URL || 'http://localhost:8080/cancel.html';   // Placeholder
-
     try {
-        console.log(`Creating checkout session for user ${userId}...`);
-        const session = await stripeClient.checkout.sessions.create({
-            mode: 'subscription',
-            line_items: [
-                {
-                    price: process.env.STRIPE_PRICE_ID,
-                    quantity: 1,
-                },
-            ],
-            success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: cancelUrl,
-            client_reference_id: userId, // Pass userId to identify user in webhook
-            // subscription_data: { // Optional: set trial period if desired
-            //   trial_period_days: 14
-            // }
+        console.log(`Creating subscription for user ${userId}...`);
+        const subscription = await razorpay.subscriptions.create({
+            plan_id: process.env.RAZORPAY_PLAN_ID,
+            customer_notify: 1,
+            quantity: 1,
+            notes: {
+                userId: userId // This will be available in webhooks
+            },
+            total_count: 12 // Number of billing cycles (12 for yearly with monthly billing)
         });
 
-        console.log(`Checkout session created for user ${userId}, URL: ${session.url}`);
-        return res.json({ error: false, url: session.url });
-
+        console.log(`Subscription created for user ${userId}, ID: ${subscription.id}`);
+        return res.json({
+            error: false,
+            key: process.env.RAZORPAY_KEY_ID,
+            subscription_id: subscription.id,
+            amount: subscription.amount,
+            currency: subscription.currency
+        });
     } catch (error) {
-        console.error(`Error creating Stripe checkout session for user ${userId}:`, error);
-        return res.status(500).json({ error: true, reason: 'stripe_error', message: 'Failed to create checkout session.' });
+        console.error(`Error creating Razorpay subscription for user ${userId}:`, error);
+        return res.status(500).json({ error: true, reason: 'razorpay_error', message: 'Failed to create subscription.' });
+    }
+});
+
+// POST /api/create-payment-url (New endpoint for direct payment URL)
+app.post('/api/create-payment-url', async (req, res) => {
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ error: true, reason: 'bad_request', message: 'Missing required field: userId' });
+    }
+
+    try {
+        console.log(`Creating direct test payment URL for user ${userId}...`);
+        
+        // For testing purposes, just create a direct URL to our API endpoint
+        // that will mark the user as subscribed
+        const paymentUrl = `http://localhost:3000/test-payment.html?userId=${userId}`;
+        const paymentId = `test_${Date.now().toString().slice(-10)}`;
+        
+        console.log(`Direct test payment URL created for user ${userId}`);
+        
+        return res.json({
+            error: false,
+            paymentUrl,
+            paymentId,
+            amount: 499 * 100,
+            currency: "INR"
+        });
+    } catch (error) {
+        console.error(`Error creating payment URL for user ${userId}:`, error);
+        return res.status(500).json({ error: true, reason: 'razorpay_error', message: 'Failed to create payment URL.' });
+    }
+});
+
+// GET /api/check-payment-status
+app.get('/api/check-payment-status', async (req, res) => {
+    const { paymentId } = req.query;
+    
+    if (!paymentId) {
+        return res.status(400).json({ error: true, reason: 'bad_request', message: 'Missing required field: paymentId' });
+    }
+    
+    try {
+        // In production, you would check Razorpay's API for the payment status
+        // For now, we'll just return a mocked successful status
+        return res.json({
+            status: 'pending',
+            message: 'Payment is being processed.'
+        });
+        
+        // Once you implement real payment verification, you would do something like:
+        // const payment = await razorpay.payments.fetch(paymentId);
+        // return res.json({
+        //     status: payment.status === 'captured' ? 'successful' : 'pending',
+        //     message: payment.status === 'captured' ? 'Payment completed successfully' : 'Payment is being processed.'
+        // });
+    } catch (error) {
+        console.error(`Error checking payment status for ID ${paymentId}:`, error);
+        return res.status(500).json({ error: true, status: 'error', message: 'Failed to check payment status.' });
+    }
+});
+
+// POST /api/simulate-payment-success - Endpoint to handle test payments
+app.post('/api/simulate-payment-success', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'Missing required field: userId' });
+    }
+    
+    try {
+        console.log(`Simulating successful payment for user ${userId}...`);
+        
+        // Calculate subscription end date (1 month from now)
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 1);
+        
+        // Update user subscription status
+        await updateUserSubscription(userId, true, endDate);
+        
+        console.log(`User ${userId} subscription updated successfully. Valid until: ${endDate}`);
+        return res.json({ success: true, message: 'Payment successful', endDate });
+    } catch (error) {
+        console.error(`Error simulating payment for user ${userId}:`, error);
+        return res.status(500).json({ success: false, message: 'Failed to update subscription.' });
     }
 });
 

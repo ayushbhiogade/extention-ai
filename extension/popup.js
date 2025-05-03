@@ -66,9 +66,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Could not get active tab.');
             }
 
-            // 3. Request page content from content script
+            // 3. Ensure content script is injected and get page content
             let pageContent = '';
             try {
+                // First, try to inject the content script
+                await chrome.scripting.executeScript({
+                    target: { tabId: activeTab.id },
+                    files: ['content.js']
+                }).catch(err => {
+                    console.log('Content script already exists or failed to inject:', err);
+                    // We can ignore the error if the script is already injected
+                });
+
+                // Now try to get the page content
                 const response = await chrome.tabs.sendMessage(activeTab.id, { action: 'getPageContent' });
                 if (response && response.success) {
                     pageContent = response.content;
@@ -77,16 +87,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(response?.error || 'Failed to get page content from content script.');
                 }
             } catch (err) {
-                 // Catch errors like the content script not being injected yet
-                 console.error("Error messaging content script:", err);
-                 // Check if it's a common 'no receiver' error
-                 if (err.message?.includes('Could not establish connection') || err.message?.includes('Receiving end does not exist')) {
-                    showError('Error: Could not connect to the page. Try reloading the page and the extension.');
-                 } else {
+                console.error("Error messaging content script:", err);
+                if (err.message?.includes('Cannot access contents of url "chrome')) {
+                    showError('Cannot analyze Chrome internal pages. Please try on a regular webpage.');
+                } else if (err.message?.includes('Could not establish connection') || err.message?.includes('Receiving end does not exist')) {
+                    showError('Error: Could not connect to the page. Please refresh the page and try again.');
+                } else {
                     showError(`Error getting page content: ${err.message}`);
-                 }
-                 showLoading(false);
-                 return; // Stop processing
+                }
+                showLoading(false);
+                return; // Stop processing
             }
 
 
@@ -137,38 +147,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Upgrade Button Logic ---
-    upgradeButton.addEventListener('click', async () => {
-        showLoading(true);
-        try {
-            const { userId } = await chrome.storage.local.get('userId');
-            if (!userId) {
-                throw new Error('User ID not found.');
-            }
-
-            const apiResponse = await fetch(`${backendUrl}/api/create-checkout-session`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userId }),
-            });
-
-            const result = await apiResponse.json();
-
-            if (!apiResponse.ok || result.error) {
-                throw new Error(result.message || `Failed to create checkout session. Status: ${apiResponse.status}`);
-            }
-
-            // Open the Stripe Checkout page in a new tab
-            chrome.tabs.create({ url: result.url });
-            showError('Redirecting to payment page...'); // Give user feedback
-
-        } catch (error) {
-            console.error('Error creating checkout session:', error);
-            showError(`Upgrade failed: ${error.message}`);
-        } finally {
-            showLoading(false);
-        }
+    upgradeButton.addEventListener('click', () => {
+        // Open payment page in a new popup window
+        chrome.windows.create({
+            url: 'payment.html',
+            type: 'popup',
+            width: 400,
+            height: 600
+        });
     });
 
     // --- Initial UI Update --- 

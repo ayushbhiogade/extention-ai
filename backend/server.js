@@ -1,5 +1,5 @@
 // backend/server.js
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config({ path: require('path').join(__dirname, '.env') }); // Load environment variables from .env file
 const express = require('express');
 const cors = require('cors');
 const { Firestore } = require('@google-cloud/firestore'); // <-- Add Firestore require
@@ -322,34 +322,106 @@ app.post('/api/create-subscription', async (req, res) => {
     }
 });
 
-// POST /api/create-payment-url (New endpoint for direct payment URL)
+// POST /api/create-payment-url (Production Razorpay integration)
 app.post('/api/create-payment-url', async (req, res) => {
     const { userId } = req.body;
+    const amount = 499; // ₹499
 
     if (!userId) {
         return res.status(400).json({ error: true, reason: 'bad_request', message: 'Missing required field: userId' });
     }
 
     try {
-        console.log(`Creating direct test payment URL for user ${userId}...`);
+        console.log(`Creating Razorpay order for user ${userId}...`);
+        console.log('Razorpay Key ID from env:', process.env.RAZORPAY_KEY_ID);
         
-        // For testing purposes, just create a direct URL to our API endpoint
-        // that will mark the user as subscribed
-        const paymentUrl = `http://localhost:3000/test-payment.html?userId=${userId}`;
-        const paymentId = `test_${Date.now().toString().slice(-10)}`;
+        // Create an actual Razorpay order
+        const order = await razorpay.orders.create({
+            amount: amount * 100, // Amount in paise (Razorpay expects amount in smallest currency unit)
+            currency: "INR",
+            receipt: `rcpt_${Date.now().toString().slice(-10)}`,
+            notes: { userId: userId } // Store userId in notes for webhook reference
+        });
         
-        console.log(`Direct test payment URL created for user ${userId}`);
+        console.log(`Razorpay order created for user ${userId}, order ID: ${order.id}`);
+        
+        // For testing purposes, directly use the key value
+        // We know this key exists in the .env file
+        const hardcodedKey = 'rzp_test_WGOahmp6PoxG8q';
+        console.log('Using hardcoded Razorpay Key ID:', hardcodedKey);
         
         return res.json({
             error: false,
-            paymentUrl,
-            paymentId,
-            amount: 499 * 100,
-            currency: "INR"
+            key: hardcodedKey, // Use the hardcoded key temporarily
+            order_id: order.id,
+            amount: order.amount,
+            currency: order.currency
         });
     } catch (error) {
-        console.error(`Error creating payment URL for user ${userId}:`, error);
-        return res.status(500).json({ error: true, reason: 'razorpay_error', message: 'Failed to create payment URL.' });
+        console.error(`Error creating Razorpay order for user ${userId}:`, error);
+        return res.status(500).json({ error: true, reason: 'razorpay_error', message: 'Failed to create Razorpay order.' });
+    }
+});
+
+// POST /api/verify-payment (Verify Razorpay payment)
+app.post('/api/verify-payment', async (req, res) => {
+    const { payment_id, order_id, signature } = req.body;
+    
+    if (!payment_id || !order_id || !signature) {
+        return res.status(400).json({ success: false, message: 'Missing required payment verification details' });
+    }
+    
+    try {
+        // Create a signature verification data string
+        const body = order_id + "|" + payment_id;
+        
+        // Get the secret key
+        const secret = process.env.RAZORPAY_KEY_SECRET;
+        
+        // Create the expected signature
+        const expectedSignature = crypto
+            .createHmac("sha256", secret)
+            .update(body.toString())
+            .digest("hex");
+            
+        // Compare the signatures
+        const isValid = expectedSignature === signature;
+        
+        if (isValid) {
+            console.log(`Payment verification successful for payment ${payment_id}`);
+            
+            try {
+                // Fetch order to get user ID from notes
+                const order = await razorpay.orders.fetch(order_id);
+                const userId = order.notes.userId;
+                
+                if (!userId) {
+                    console.error('No userId found in order notes');
+                    return res.status(400).json({ success: false, message: 'User ID not found in order' });
+                }
+                
+                // Set subscription end date (1 month from now)
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+                
+                // Update user subscription status
+                await updateUserSubscription(userId, true, endDate);
+                
+                return res.json({
+                    success: true,
+                    message: 'Payment verified and subscription activated'
+                });
+            } catch (orderError) {
+                console.error('Error processing order after verification:', orderError);
+                return res.status(500).json({ success: false, message: 'Error processing subscription after payment' });
+            }
+        } else {
+            console.error(`Payment signature verification failed for payment ${payment_id}`);
+            return res.status(400).json({ success: false, message: 'Payment verification failed' });
+        }
+    } catch (error) {
+        console.error(`Error verifying payment:`, error);
+        return res.status(500).json({ success: false, message: 'Server error during payment verification' });
     }
 });
 
@@ -407,7 +479,66 @@ app.post('/api/simulate-payment-success', async (req, res) => {
     }
 });
 
-// --- Start Server ---
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+// Temporary endpoint for testing - remove in production
+app.post('/api/reset-subscription', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: true, message: 'User ID is required' });
+    }
+    
+    await updateUserSubscription(userId, false, null);
+    
+    res.json({ 
+      success: true, 
+      message: 'Subscription reset successfully. User is now in free tier.',
+      userId: userId
+    });
+  } catch (error) {
+    console.error('Error in reset-subscription endpoint:', error);
+    res.status(500).json({ error: true, message: 'Failed to reset subscription', details: error.message });
+  }
+});
+
+// POST /api/create-payment-url - Create a new Razorpay order
+app.post('/api/create-payment-url', async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: true, message: 'User ID is required' });
+    }
+
+    try {
+        // Create a new order
+        const amount = 499; // ₹499 per month
+        const order = await razorpay.orders.create({
+            amount: amount * 100, // Amount in paise
+            currency: 'INR',
+            receipt: `rcpt_${Date.now().toString().slice(-10)}`,
+            notes: { userId: userId }
+        });
+
+        // Return the order details and Razorpay key
+        return res.json({
+            error: false,
+            key: process.env.RAZORPAY_KEY_ID, // Send the key ID for client-side initialization
+            amount: order.amount,
+            currency: order.currency,
+            order_id: order.id
+        });
+    } catch (error) {
+        console.error('Error creating Razorpay order:', error);
+        return res.status(500).json({
+            error: true,
+            message: 'Failed to create payment order',
+            details: error.message
+        });
+    }
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Success - AI Webpage Q&A</title>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .success-card {
+            background-color: #e8f5e9;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        h1 { color: #2e7d32; }
+        p { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="success-card">
+        <h1>Payment Successful!</h1>
+        <p>Your account has been upgraded to Pro. You now have unlimited access.</p>
+        <p>You can close this window and continue using the extension.</p>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            
+            if (userId) {
+                // Try to communicate with the extension
+                try {
+                    // This will only work if the extension is installed
+                    chrome.runtime.sendMessage(
+                        "akekamhakpcejippicfcjknpijjkflgd", // Your extension ID
+                        { action: "payment_success", userId: userId },
+                        function(response) {
+                            console.log("Message sent to extension", response);
+                        }
+                    );
+                } catch (e) {
+                    console.log("Communication with extension not possible", e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

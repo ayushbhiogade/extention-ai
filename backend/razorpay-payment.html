@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Webpage Q&A - Payment</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            padding: 30px;
+        }
+        h1 { color: #333; }
+        .price { 
+            font-size: 2.5em; 
+            color: #4CAF50;
+            margin: 20px 0;
+        }
+        .features {
+            text-align: left;
+            margin: 30px auto;
+            max-width: 400px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2em;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        .error { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>AI Webpage Q&A - Pro Subscription</h1>
+        <div class="price">₹499/month</div>
+        
+        <div class="features">
+            <ul>
+                <li>Unlimited AI queries</li>
+                <li>Priority support</li>
+                <li>Access to future premium features</li>
+            </ul>
+        </div>
+        
+        <button id="payButton">Proceed to Payment</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            const statusDiv = document.getElementById('status');
+            
+            if (!userId) {
+                showStatus('Error: User ID not found', true);
+                return;
+            }
+            
+            function showStatus(message, isError = false) {
+                statusDiv.textContent = message;
+                statusDiv.className = isError ? 'error' : 'success';
+                statusDiv.style.display = 'block';
+            }
+            
+            document.getElementById('payButton').addEventListener('click', async function() {
+                try {
+                    showStatus('Starting payment process...');                    
+                    // Add timestamp to avoid caching issues
+                    const timestamp = new Date().getTime();
+                    const apiUrl = `/api/create-payment-url?t=${timestamp}`;
+                    console.log('Calling API endpoint:', apiUrl);
+                    
+                    // Create order on backend
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId })
+                    });
+                    
+                    console.log('API Response status:', response.status, response.statusText);
+                    const result = await response.json();
+                    console.log('API Response body:', result);
+                    
+                    if (!response.ok || result.error) {
+                        throw new Error(result.message || 'Failed to create payment');
+                    }
+                    
+                    if (!result.key) {
+                        console.error('No key found in response:', result);
+                        showStatus('Error: Razorpay key is missing in the API response', true);
+                        return;
+                    }
+                    
+                    // Initialize Razorpay
+                    const options = {
+                        key: result.key,
+                        amount: result.amount,
+                        currency: result.currency,
+                        name: 'AI Webpage Q&A',
+                        description: 'Pro Subscription',
+                        order_id: result.order_id,
+                        prefill: {
+                            email: '',
+                            contact: ''
+                        },
+                        notes: {
+                            userId: userId
+                        },
+                        theme: {
+                            color: '#4CAF50'
+                        },
+                        handler: function(response) {
+                            // Verify payment with backend
+                            fetch('/api/verify-payment', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    payment_id: response.razorpay_payment_id,
+                                    order_id: response.razorpay_order_id,
+                                    signature: response.razorpay_signature
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(result => {
+                                if (result.success) {
+                                    showStatus('Payment successful! Redirecting...');
+                                    // Redirect to success page that will communicate with the extension
+                                    window.location.href = `/payment-success.html?userId=${userId}`;
+                                } else {
+                                    showStatus('Payment verification failed: ' + result.message, true);
+                                }
+                            })
+                            .catch(err => {
+                                showStatus('Error verifying payment: ' + err.message, true);
+                            });
+                        }
+                    };
+                    
+                    const razorpayCheckout = new Razorpay(options);
+                    razorpayCheckout.open();
+                } catch (error) {
+                    showStatus('Error: ' + error.message, true);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

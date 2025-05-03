@@ -27,3 +27,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // console.log('Background script received message:', message);
   return true; // Keep the message channel open for async response if needed later
 });
+
+// Listen for messages from the payment success page
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  console.log('Received external message:', message);
+  
+  if (message.action === "payment_success" && message.userId) {
+    // Update subscription status
+    chrome.storage.local.set({ isSubscribed: true }, () => {
+      console.log('Subscription status updated from external page for user:', message.userId);
+      sendResponse({ success: true });
+    });
+    return true; // Keep the message channel open for the async response
+  }
+});

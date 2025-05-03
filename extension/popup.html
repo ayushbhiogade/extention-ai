@@ -3,31 +3,81 @@
 <head>
     <title>AI Webpage Q&A</title>
     <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
-    <h1>Ask the Page</h1>
+    <div class="container">
+        <header>
+            <h1><span class="material-icons">psychology</span> AI Q&A Assistant</h1>
+            <div id="statusBadge" class="badge pro-badge" style="display: none;">PRO</div>
+        </header>
 
-    <div id="responseArea">
-        <!-- Response will be displayed here -->
-        <div id="loader" style="display: none;">Loading...</div>
-    </div>
+        <form id="queryForm">
+            <div class="input-wrapper">
+                <textarea 
+                    id="questionInput" 
+                    placeholder="Ask any question about this webpage..."
+                    rows="3"
+                    autofocus
+                ></textarea>
+                <button type="submit" class="submit-btn">
+                    <span class="material-icons">send</span>
+                </button>
+            </div>
+        </form>
 
-    <div id="errorArea" style="color: red;">
-        <!-- Errors will be displayed here -->
-    </div>
+        <div id="responseArea" class="response-area" style="display: none;">
+            <div class="response-header">
+                <span class="material-icons">chat</span>
+                <span>AI Response</span>
+                <button class="clear-btn" id="clearResponse">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="response-content">
+                <div id="loader" class="loader" style="display: none;">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div id="responseContent"></div>
+            </div>
+        </div>
 
-    <form id="queryForm">
-        <textarea id="questionInput" placeholder="Ask about this page..." rows="4"></textarea>
-        <button type="submit">Ask AI</button>
-    </form>
+        <div id="errorArea" class="error-area" style="display: none;">
+            <span class="material-icons">error_outline</span>
+            <span id="errorMessage"></span>
+        </div>
 
-    <div id="usageInfo">
-        <!-- Usage info will be displayed here -->
-    </div>
+        <div id="usageInfo" class="usage-info">
+            <div id="usageCountContainer" class="usage-count">
+                <span class="material-icons">analytics</span>
+                <span id="usageCount">0/5</span>
+            </div>
+            <div id="subscriptionInfo" class="subscription-info" style="display: none;">
+                <span class="material-icons">workspace_premium</span>
+                <span>Pro Subscription Active</span>
+            </div>
+        </div>
 
-    <div id="upgradeSection" style="display: none;">
-        <p>Free limit reached.</p>
-        <button id="upgradeButton">Upgrade to Pro</button>
+        <div id="upgradeSection" class="upgrade-section" style="display: none;">
+            <div class="upgrade-content">
+                <h2>Upgrade to Pro</h2>
+                <p>Get unlimited AI queries and priority support</p>
+                <ul class="features-list">
+                    <li><span class="material-icons">check_circle</span> Unlimited AI queries</li>
+                    <li><span class="material-icons">check_circle</span> Priority support</li>
+                    <li><span class="material-icons">check_circle</span> Future premium features</li>
+                </ul>
+                <button id="upgradeButton" class="upgrade-btn">
+                    <span class="material-icons">stars</span>
+                    Upgrade Now - ₹499/month
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="popup.js"></script>

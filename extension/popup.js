@@ -1,43 +1,59 @@
 // popup.js
 
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
     const queryForm = document.getElementById('queryForm');
     const questionInput = document.getElementById('questionInput');
     const responseArea = document.getElementById('responseArea');
+    const responseContent = document.getElementById('responseContent');
     const loader = document.getElementById('loader');
     const errorArea = document.getElementById('errorArea');
+    const errorMessage = document.getElementById('errorMessage');
     const usageInfo = document.getElementById('usageInfo');
+    const usageCount = document.getElementById('usageCount');
+    const usageCountContainer = document.getElementById('usageCountContainer');
+    const subscriptionInfo = document.getElementById('subscriptionInfo');
+    const statusBadge = document.getElementById('statusBadge');
     const upgradeSection = document.getElementById('upgradeSection');
     const upgradeButton = document.getElementById('upgradeButton');
+    const clearResponse = document.getElementById('clearResponse');
 
     const backendUrl = 'http://localhost:3000'; // Adjust if your backend runs elsewhere
 
-    // Function to update UI elements (loading, errors, response)
+    // UI Update Functions
     function showLoading(isLoading) {
-        loader.style.display = isLoading ? 'block' : 'none';
+        loader.style.display = isLoading ? 'flex' : 'none';
         if (isLoading) {
-            responseArea.textContent = ''; // Clear previous response
-            errorArea.textContent = '';    // Clear previous error
-            upgradeSection.style.display = 'none'; // Hide upgrade section during loading
+            if (!responseArea.style.display || responseArea.style.display === 'none') {
+                responseArea.style.display = 'block';
+                responseContent.textContent = '';
+            }
+            errorArea.style.display = 'none';
+            upgradeSection.style.display = 'none';
         }
     }
 
     function showError(message) {
-        errorArea.textContent = message;
-        responseArea.textContent = '';
+        errorMessage.textContent = message;
+        errorArea.style.display = 'flex';
+        if (!responseContent.textContent) {
+            responseArea.style.display = 'none';
+        }
         upgradeSection.style.display = 'none';
         showLoading(false);
     }
 
     function showResponse(text) {
-        responseArea.textContent = text;
-        errorArea.textContent = '';
+        responseArea.style.display = 'block';
+        responseContent.textContent = text;
+        errorArea.style.display = 'none';
         showLoading(false);
     }
 
     function showUpgradePrompt() {
-        errorArea.textContent = 'You have reached your free usage limit.';
-        responseArea.textContent = '';
+        errorMessage.textContent = 'You have reached your free usage limit.';
+        errorArea.style.display = 'flex';
+        responseArea.style.display = 'none';
         upgradeSection.style.display = 'block';
         showLoading(false);
     }
@@ -162,33 +178,51 @@ document.addEventListener('DOMContentLoaded', () => {
     async function updateUsageDisplay(count, subscribed) {
         const limit = 5; // The free limit
         if (typeof count !== 'number' || typeof subscribed !== 'boolean') {
-             // Fetch from storage if not provided
-             const data = await chrome.storage.local.get(['usageCount', 'isSubscribed']);
-             count = data.usageCount ?? 0;
-             subscribed = data.isSubscribed ?? false;
+            // Fetch from storage if not provided
+            const data = await chrome.storage.local.get(['usageCount', 'isSubscribed']);
+            count = data.usageCount ?? 0;
+            subscribed = data.isSubscribed ?? false;
         }
        
         if (subscribed) {
-            usageInfo.textContent = 'Plan: Pro (Unlimited)';
-            upgradeSection.style.display = 'none'; // Hide upgrade if subscribed
+            statusBadge.style.display = 'block';
+            subscriptionInfo.style.display = 'flex';
+            usageCountContainer.style.display = 'none';
+            upgradeSection.style.display = 'none';
         } else {
-            usageInfo.textContent = `Usage: ${count} / ${limit} free queries`;
-            if (count >= limit) {
-                 // Optionally show upgrade prompt immediately if loaded and over limit
-                 // showUpgradePrompt(); // Uncomment this if you want the prompt on load when over limit
+            statusBadge.style.display = 'none';
+            subscriptionInfo.style.display = 'none';
+            usageCountContainer.style.display = 'flex';
+            usageCount.textContent = `${count}/${limit}`;
+            if (count >= limit && !upgradeSection.style.display) {
+                showUpgradePrompt();
             }
         }
     }
 
+    // Event Listeners
+    clearResponse.addEventListener('click', () => {
+        responseArea.style.display = 'none';
+        responseContent.textContent = '';
+    });
+
+    // Auto-resize textarea
+    questionInput.addEventListener('input', () => {
+        questionInput.style.height = 'auto';
+        questionInput.style.height = (questionInput.scrollHeight) + 'px';
+    });
+
     // Update display when popup opens
     updateUsageDisplay();
 
-     // Listen for storage changes (e.g., background script updates subscription status)
-     chrome.storage.onChanged.addListener((changes, areaName) => {
+    // Listen for storage changes
+    chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === 'local' && (changes.usageCount || changes.isSubscribed)) {
             console.log('Storage changed, updating usage display.');
-            updateUsageDisplay(); // Re-fetch from storage and update UI
+            updateUsageDisplay();
         }
     });
 
+    // Focus input on popup open
+    questionInput.focus();
 });
